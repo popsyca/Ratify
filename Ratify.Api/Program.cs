@@ -21,6 +21,16 @@ else
     connectionString = connectionString.Trim('\"').Trim('\'').Trim();
 }
 
+// Diagnostic logging for connection string (mask password)
+string maskedCS = "null";
+if (!string.IsNullOrEmpty(connectionString))
+{
+    maskedCS = connectionString;
+    maskedCS = System.Text.RegularExpressions.Regex.Replace(maskedCS, @"(?<=password=)[^;]+", "***", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    maskedCS = System.Text.RegularExpressions.Regex.Replace(maskedCS, @":[^@]+@", ":***@", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+}
+Console.WriteLine($"[INFO] DB Connection String: '{maskedCS}'");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     bool isPostgres = connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
