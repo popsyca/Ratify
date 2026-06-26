@@ -11,12 +11,51 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-super-secret-key-change-me";
 
-var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=Ratify.db";
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = "Data Source=Ratify.db";
+}
+else
+{
+    connectionString = connectionString.Trim('\"').Trim('\'').Trim();
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (connectionString.Contains("Host=") || connectionString.Contains("Server=") || connectionString.Contains("postgres://") || connectionString.Contains("postgresql://"))
+    bool isPostgres = connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+                      connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
+                      connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
+                      connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+                      connectionString.Contains("Database=", StringComparison.OrdinalIgnoreCase);
+
+    if (isPostgres)
     {
-        options.UseNpgsql(connectionString);
+        string npgsqlConnectionString = connectionString;
+        if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) || 
+            connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var uri = new Uri(connectionString);
+                var userInfo = uri.UserInfo.Split(':');
+                var username = userInfo[0];
+                var password = userInfo.Length > 1 ? userInfo[1] : "";
+                var host = uri.Host;
+                var port = uri.Port != -1 ? uri.Port : 5432;
+                var database = uri.AbsolutePath.TrimStart('/');
+                
+                var sslMode = "Require"; 
+                var trustServerCert = "true";
+                
+                npgsqlConnectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database};SSL Mode={sslMode};Trust Server Certificate={trustServerCert};";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing PostgreSQL URI: {ex.Message}. Falling back to raw string.");
+            }
+        }
+        options.UseNpgsql(npgsqlConnectionString);
     }
     else
     {
