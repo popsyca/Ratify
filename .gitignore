@@ -1,0 +1,38 @@
+# .gitignore for full-stack .NET and Angular app
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Other IDEs
+.idea/
+.vscode/
+
+# Angular build and dependency folders
+/book-vibe-client/dist/
+/book-vibe-client/node_modules/
+/book-vibe-client/.angular/
+
+# Local databases and secrets
+*.db
+appsettings.Development.json
