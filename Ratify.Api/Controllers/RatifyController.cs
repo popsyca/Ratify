@@ -2,22 +2,22 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using BookVibe.Api.Data;
-using BookVibe.Api.Models;
+using Ratify.Api.Data;
+using Ratify.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-namespace BookVibe.Api.Controllers;
+namespace Ratify.Api.Controllers;
 
 [ApiController]
-public class BookVibeController : ControllerBase
+public class RatifyController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
 
-    public BookVibeController(AppDbContext db, IConfiguration config)
+    public RatifyController(AppDbContext db, IConfiguration config)
     {
         _db = db;
         _config = config;
@@ -323,7 +323,7 @@ public class BookVibeController : ControllerBase
             new Claim(ClaimTypes.Email, user.Email)
         };
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken("BookVibe", "BookVibeClient", claims, expires: DateTime.UtcNow.AddHours(8), signingCredentials: credentials);
+        var token = new JwtSecurityToken("Ratify", "RatifyClient", claims, expires: DateTime.UtcNow.AddHours(8), signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

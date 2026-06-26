@@ -1,4 +1,4 @@
-namespace BookVibe.Api.Models;
+namespace Ratify.Api.Models;
 
 public class Book
 {

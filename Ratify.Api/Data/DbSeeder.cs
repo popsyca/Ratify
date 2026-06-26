@@ -1,8 +1,8 @@
 using System.Text;
 using System.Net.Http;
-using BookVibe.Api.Models;
+using Ratify.Api.Models;
 
-namespace BookVibe.Api.Data;
+namespace Ratify.Api.Data;
 
 public static class DbSeeder
 {

@@ -1,7 +1,7 @@
-using BookVibe.Api.Models;
+using Ratify.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookVibe.Api.Data;
+namespace Ratify.Api.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {

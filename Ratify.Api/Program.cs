@@ -1,8 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BookVibe.Api.Data;
-using BookVibe.Api.Models;
+using Ratify.Api.Data;
+using Ratify.Api.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-super-secret-key-change-me";
 
-var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=bookvibe.db";
+var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=Ratify.db";
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (connectionString.Contains("Host=") || connectionString.Contains("Server=") || connectionString.Contains("postgres://") || connectionString.Contains("postgresql://"))
@@ -34,8 +34,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = "BookVibe",
-        ValidAudience = "BookVibeClient",
+        ValidIssuer = "Ratify",
+        ValidAudience = "RatifyClient",
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
