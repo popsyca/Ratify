@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://ratify-api-placeholder.onrender.com/api/:path*"
+      "destination": "https://ratify-9dag.onrender.com/api/:path*"
     },
     {
       "source": "/((?!api/).*)",
