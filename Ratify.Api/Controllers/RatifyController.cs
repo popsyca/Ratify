@@ -122,33 +122,41 @@ public class RatifyController : ControllerBase
             .Select(g => new { BookId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.BookId, x => x.Count);
 
-        var booksData = await _db.Books.Include(b => b.Reviews).Select(b => new
-        {
-            b.Id,
-            b.Title,
-            b.Author,
-            b.Description,
-            b.CoverUrl,
-            b.Genre,
-            AverageRating = b.OriginalRatingsCount + b.Reviews.Count == 0 
-                ? 0 
-                : Math.Round(((b.OriginalAverageRating * b.OriginalRatingsCount) + (b.Reviews.Count == 0 ? 0 : b.Reviews.Sum(r => r.Rating))) / (b.OriginalRatingsCount + b.Reviews.Count), 2),
-            ReviewCount = b.OriginalRatingsCount + b.Reviews.Count,
-            TopVibeColor = b.Reviews.GroupBy(r => r.VibeColor).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault() ?? "#94A3B8"
-        }).ToListAsync();
+        // Fetch to memory first to bypass EF translation constraints on PostgreSQL
+        var books = await _db.Books.Include(b => b.Reviews).ToListAsync();
 
-        var response = booksData.Select(b => new
+        var response = books.Select(b => 
         {
-            b.Id,
-            b.Title,
-            b.Author,
-            b.Description,
-            b.CoverUrl,
-            b.Genre,
-            b.AverageRating,
-            b.ReviewCount,
-            b.TopVibeColor,
-            WeeklyViews = weeklyViews.TryGetValue(b.Id, out var count) ? count : 0
+            var totalReviews = b.OriginalRatingsCount + b.Reviews.Count;
+            double avgRating = 0;
+            if (totalReviews > 0)
+            {
+                var sumOfReviews = b.Reviews.Count == 0 ? 0 : b.Reviews.Sum(r => r.Rating);
+                avgRating = Math.Round(((b.OriginalAverageRating * b.OriginalRatingsCount) + sumOfReviews) / totalReviews, 2);
+            }
+
+            var topVibe = b.Reviews.Count == 0 
+                ? "#94A3B8" 
+                : b.Reviews.GroupBy(r => r.VibeColor)
+                           .OrderByDescending(g => g.Count())
+                           .Select(g => g.Key)
+                           .FirstOrDefault() ?? "#94A3B8";
+
+            var viewsCount = weeklyViews.TryGetValue(b.Id, out var count) ? count : 0;
+
+            return new
+            {
+                b.Id,
+                b.Title,
+                b.Author,
+                b.Description,
+                b.CoverUrl,
+                b.Genre,
+                AverageRating = avgRating,
+                ReviewCount = totalReviews,
+                TopVibeColor = topVibe,
+                WeeklyViews = viewsCount
+            };
         }).ToList();
 
         return Ok(response);
