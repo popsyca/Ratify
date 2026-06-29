@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ratify.Api.Controllers;
 
@@ -24,6 +25,7 @@ public class RatifyController : ControllerBase
     }
 
     [HttpPost("api/auth/register")]
+    [EnableRateLimiting("auth-limiter")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var email = request.Email?.Trim().ToLowerInvariant();
@@ -39,6 +41,12 @@ public class RatifyController : ControllerBase
         if (displayName.Length < 3 || displayName.Length > 15)
             return BadRequest("Username must be between 3 and 15 characters long.");
 
+        if (password.Length < 8)
+            return BadRequest("Password must be at least 8 characters long.");
+
+        if (!password.Any(char.IsDigit) || !password.Any(char.IsUpper))
+            return BadRequest("Password must contain at least one uppercase letter and one digit.");
+
         if (await _db.Users.AnyAsync(u => u.DisplayName.ToLower() == displayName.ToLower()))
             return Conflict("Username already in use.");
 
@@ -50,16 +58,18 @@ public class RatifyController : ControllerBase
             DisplayName = displayName,
             Email = email,
             PasswordHash = HashPassword(password),
-            ConfirmationCode = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()
+            ConfirmationCode = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
+            IsConfirmed = true // Auto-confirm user for security and simplified flow
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        return Ok(new { user.Email, user.ConfirmationCode, Message = "Use this demo code to confirm the account." });
+        return Ok(new { Message = "Registration successful. You can log in now." });
     }
 
     [HttpPost("api/auth/confirm")]
+    [EnableRateLimiting("auth-limiter")]
     public async Task<IActionResult> Confirm([FromBody] ConfirmRequest request)
     {
         var email = request.Email?.Trim().ToLowerInvariant();
@@ -79,6 +89,7 @@ public class RatifyController : ControllerBase
     }
 
     [HttpPost("api/auth/login")]
+    [EnableRateLimiting("auth-limiter")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var email = request.Email?.Trim().ToLowerInvariant();
@@ -158,6 +169,37 @@ public class RatifyController : ControllerBase
 
         if (title.Length < 2 || author.Length < 2) return BadRequest("Title and author are required.");
         if (description.Length < 10) return BadRequest("Description must be at least 10 characters.");
+        
+        // SSRF and unsafe protocol validation on coverUrl
+        if (!string.IsNullOrWhiteSpace(coverUrl))
+        {
+            if (coverUrl.Contains("javascript:", StringComparison.OrdinalIgnoreCase) || 
+                coverUrl.Contains("169.254.169.254") || 
+                coverUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) || 
+                coverUrl.Contains("127.0.0.1"))
+            {
+                return BadRequest("Invalid cover image URL format or host.");
+            }
+
+            if (Uri.TryCreate(coverUrl, UriKind.Absolute, out var uriResult))
+            {
+                if (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps)
+                {
+                    return BadRequest("Cover image URL must use HTTP or HTTPS.");
+                }
+            }
+            else
+            {
+                return BadRequest("Cover image URL must be a valid absolute URL.");
+            }
+        }
+
+        // HTML Sanitization for Stored XSS Prevention
+        title = System.Net.WebUtility.HtmlEncode(title);
+        author = System.Net.WebUtility.HtmlEncode(author);
+        description = System.Net.WebUtility.HtmlEncode(description);
+        genre = System.Net.WebUtility.HtmlEncode(genre);
+
         if (await _db.Books.AnyAsync(b => b.Title == title && b.Author == author)) return Conflict("This book already exists.");
 
         var book = new Book { Title = title, Author = author, Description = description, CoverUrl = coverUrl, Genre = genre };
@@ -233,6 +275,7 @@ public class RatifyController : ControllerBase
         if (!System.Text.RegularExpressions.Regex.IsMatch(vibeColor, "^#[0-9A-Fa-f]{6}$")) return BadRequest("Vibe color must be a hex color.");
 
         var comment = request.Comment?.Trim() ?? "";
+        comment = System.Net.WebUtility.HtmlEncode(comment); // HTML Sanitization for Stored XSS Prevention
 
         var existing = await _db.Reviews.SingleOrDefaultAsync(r => r.BookId == id && r.UserId == userId);
         if (existing is null)
