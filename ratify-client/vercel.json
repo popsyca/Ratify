@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "dist/ratify-client/browser",
   "rewrites": [
     {
       "source": "/api/:path*",
